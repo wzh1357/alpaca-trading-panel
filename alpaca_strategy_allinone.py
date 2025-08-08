@@ -1,51 +1,45 @@
-# alpaca_strategy_autotrade.py
+# alpaca_strategy_allinone.py
 import streamlit as st
-import alpaca_trade_api as tradeapi
+from alpaca_strategy_autotrade import show_autotrade_ui
+from alpaca_strategy_scoring import show_scoring_ui
+from alpaca_backtest import show_backtest_ui
 
-def show_autotrade_ui(api_key, api_secret, base_url):
-    st.subheader("🚀 自动挂单交易")
+st.set_page_config(page_title="Alpaca 自动交易系统", layout="wide")
+st.title("🦰 Alpaca 策略交易系统")
 
-    if not api_key or not api_secret:
-        st.warning("⚠️ 请先在左侧栏输入 API Key 并连接")
-        return
+# 配置 API 信息
+def api_config_section():
+    st.sidebar.markdown("🔐 **API 配置**")
+    api_key = st.sidebar.text_input("API Key", type="password")
+    api_secret = st.sidebar.text_input("API Secret", type="password")
+    account_type = st.sidebar.radio("账户模式", ["模拟账户 (Paper)", "真实账户 (Live)"])
 
-    # 连接 Alpaca API
-    try:
-        api = tradeapi.REST(api_key, api_secret, base_url, api_version='v2')
-        account = api.get_account()
-        st.success(f"✅ 已连接账户: {account.id}")
-    except Exception as e:
-        st.error(f"❌ 连接失败: {e}")
-        return
+    if st.sidebar.button("🔗 请输入 API 密钥连接账户"):
+        if api_key and api_secret:
+            st.session_state["api_key"] = api_key
+            st.session_state["api_secret"] = api_secret
+            st.session_state["base_url"] = (
+                "https://paper-api.alpaca.markets" if "模拟" in account_type
+                else "https://api.alpaca.markets"
+            )
+            st.sidebar.success("✅ API 密钥已连接")
+        else:
+            st.sidebar.error("❌ 请填写完整的 API Key 和 Secret")
 
-    st.markdown("### 🔹 配置挂单")
+api_config_section()
 
-    symbols = st.text_area("股票代码列表 (\u9017\u53f7\u5206\u9694)", "NVDA,AMD,DUOL").split(",")
-    qty = st.number_input("购买股数", 1, 100, value=10)
-    buy_price = st.number_input("限价买入价", min_value=0.0)
-    tp = st.number_input("TP - 止盈价", min_value=0.0)
-    sl = st.number_input("SL - 止损价", min_value=0.0)
+# 获取配置值
+api_key = st.session_state.get("api_key", "")
+api_secret = st.session_state.get("api_secret", "")
+base_url = st.session_state.get("base_url", "")
 
-    if st.button("📈 提交挂单"):
-        if not symbols or not buy_price or not tp or not sl:
-            st.error("请填写完整挂单信息")
-            return
+page = st.sidebar.radio("📋 功能菜单", ["自动挂单下单", "策略评分系统", "历史策略回测"])
 
-        for sym in symbols:
-            sym = sym.strip().upper()
-            try:
-                api.submit_order(
-                    symbol=sym,
-                    qty=qty,
-                    side="buy",
-                    type="limit",
-                    limit_price=buy_price,
-                    time_in_force="gtc",
-                    order_class="bracket",
-                    take_profit={"limit_price": tp},
-                    stop_loss={"stop_price": sl}
-                )
-                st.success(f"✅ {sym} 挂单成功")
-            except Exception as e:
-                st.error(f"❌ {sym} 挂单失败: {e}")
+if page == "自动挂单下单":
+    show_autotrade_ui(api_key, api_secret, base_url)
 
+elif page == "策略评分系统":
+    show_scoring_ui(api_key, api_secret, base_url)
+
+elif page == "历史策略回测":
+    show_backtest_ui(api_key, api_secret, base_url)
