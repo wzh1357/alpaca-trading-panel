@@ -1,5 +1,0 @@
-streamlit
-yfinance
-ta
-alpaca-trade-api
-pandas
